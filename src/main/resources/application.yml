@@ -1,9 +1,4 @@
-spring:
-  datasource:
-    url: jdbc:postgresql://192.168.10.100:25432/user_lee
-    username: user_lee
-    password: user_lee
-    driver-class-name: org.postgresql.Driver
+
     
   thymeleaf:
     cache: false
