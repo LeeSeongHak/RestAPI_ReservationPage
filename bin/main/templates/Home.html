@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" 
+    xmlns:th="http://www.thymeleaf.org" 
+    xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity3"
+    xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<title>Welcome to Reservation Page</title>
+<link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+<link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/timepicker/1.3.5/jquery.timepicker.min.css">
+<script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/timepicker/1.3.5/jquery.timepicker.min.js"></script>
+<script>
+$(document).ready(() => {
+	mainView();
+	roomList();
+	
+	$.datepicker.setDefaults({
+	    dateFormat: 'yy/mm/dd'
+	    , showOtherMonths: true
+	    , showMonthAfterYear: true
+	    , changeYear: true
+	    , changeMonth: true
+	    , showOn: "both"
+        , yearSuffix: "년"
+        , monthNamesShort: ['1','2','3','4','5','6','7','8','9','10','11','12']
+        , monthNames: ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월']
+        , dayNamesMin: ['일','월','화','수','목','금','토']
+        , dayNames: ['일요일','월요일','화요일','수요일','목요일','금요일','토요일']
+		, mindate : -0
+	});
+	
+	$("#startDate").datepicker();                    
+    $("#endDate").datepicker();
+    
+    $('#startDate').datepicker('setDate', 'today');
+    $('#endDate').datepicker('setDate', 'today');
+    
+    $("#startTime").timepicker({
+    	timeFormat: ' HH:mm',
+    	interval : '10',
+    	minTime : '08',
+    	maxTime : '9:00pm',
+    	defaultTime: '09',
+    	dynamic: false,
+        dropdown: true,
+        scrollbar: true
+    });
+    
+    $("#endTime").timepicker({
+    	timeFormat: ' HH:mm',
+    	interval : '10',
+    	minTime : '08',
+    	maxTime : '9:00pm',
+    	defaultTime: '09',
+    	dynamic: false,
+        dropdown: true,
+        scrollbar: true
+    });
+});
+
+//main view
+const mainView = () => {
+	if($('#reserveModal').show()){
+		$('#reserveModal').hide();
+	}
+	
+	if($('#searchByReserveIdModal').show()){
+		$('#searchByReserveIdModal').hide();
+	}
+	
+	let mainView = '<h3>Reservation Pageへようこそ。</h3>';
+	$('#article').html(mainView);
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////
+
+//get room list
+const roomList = () => {
+	$.ajax({
+		url: '/room/list',
+		type: 'GET',
+		success: outRoomList,
+		error: (e) => {
+			alert('エラー発生！');
+		}
+	});
+}
+
+const outRoomList = (json) => {
+	let selectRoom = '<select id="selectedRoom" onchange="handleRoomChange(this)">'
+	selectRoom += '<option value="">会議室選択</option>'
+	$.each(json, (key, item) => {
+		selectRoom += '<option value=' + '"' + item.room_id + '"' + '>'
+		selectRoom += item.room_name
+		selectRoom += '</option>'
+	});
+	selectRoom += '</select>'
+	$('#reservationRoom').html(selectRoom);
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////
+
+//room add
+const handleRoomAdd = () => {
+	let reservationAddPage = '<h3> 会議室の追加ページ </h3>'
+	reservationAddPage += '<p>会議室名 : <input id="roomName" type="text" placeholder="会議室名入力" /></p>';
+	reservationAddPage += '<p>申請者名 : <input id="roomCreateUserName" type="text" placeholder="申請者名入力" /></p>';
+	reservationAddPage += '<button onClick={handleRoomPost()} style="margin-right: 3%;">' + '申請'  + '</button>';
+	reservationAddPage += '<button onClick={mainView()}>' + 'キャンセル'  + '</button>';
+	$('#article').html(reservationAddPage);
+}
+
+const handleRoomPost = () => {
+	const roomName = $('#roomName').val();
+	const roomCreateUserName = $('#roomCreateUserName').val();
+	const roomAddData = {
+			room_name : roomName,
+			create_user : roomCreateUserName
+	}
+	
+	$.ajax({
+		url : '/room/add',
+		type : 'POST',
+		dataType : 'JSON',
+		data : JSON.stringify(roomAddData),
+		contentType: 'application/json',
+		success : () => {
+			alert('会議室の追加を完了しました。');
+			location.reload(true);
+		},
+		error : (e) => {
+			alert('エラー発生！');
+		}
+	});
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////
+
+//reservation add
+const handleReservationAdd = () => {
+	$('#reserveModal').show();
+}
+
+const handleReservePost = () => {
+	const reserveName = $('#reserveName').val();
+	const roomName = $('#roomName').val();
+	const startDate = $('#startDate').val();
+	const startTime = $('#startTime').val();
+	const endDate = $('#endDate').val();
+	const endTime = $('#endTime').val();
+	const createUser = $('#createUser').val();
+	
+	const startDateTime = startDate + startTime;
+	const endDateTime = endDate + endTime;
+	
+	const reservationAddData = {
+			reserve_name : reserveName,
+			room_name : roomName,
+			start_time : startDateTime,
+			end_time : endDateTime,
+			create_user : createUser
+	}
+	
+	$.ajax({
+		url : '/room/reserve',
+		type : 'POST',
+		dataType : 'JSON',
+		data : JSON.stringify(reservationAddData),
+		contentType: 'application/json',
+		success : () => {
+			alert('予約が完了されました。');
+			location.reload(true);
+		},
+		error : (e) => {
+			$('#searchByReserveIdModal').hide();
+			alert('エラー発生！');
+		}
+	});
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////
+
+//get room list
+const handleRoomChange = (roomId) => {
+	if(roomId.value == ""){
+		let selectRoom = '<h3> 会議室を選択してください。 </h3>';
+		$('#article').html(selectRoom);
+		return;
+	}
+	$.ajax({
+		url : '/room/reserve/day/' + roomId.value,
+		type : 'GET',
+		dataType : 'JSON',
+		success : outReservationList,
+		error : (e) => {
+			alert('エラー発生！');
+		}
+	});
+}
+
+const outReservationList = (json) => {
+	if(json.toString() === ''){
+		let reservationList = '<h3> 選択した会議室は今日、予約がありません。 </h3>';
+		$('#article').html(reservationList);
+		return;
+	}
+	let reservationList = '<table class="table table-bordered table-striped table-hover">'
+	reservationList += '<tr><td width="10%">予約名</td>';
+	reservationList += '<td width="10%">開始時間</td>';
+	reservationList += '<td width="10%">終了時間</td>';
+	reservationList += '<td width="10%">申請者</td>';
+	reservationList += '<td width="10%">申請時間</td>';
+	reservationList += '<td width="10%">変更者</td>';
+	reservationList += '<td width="10%">変更時間</td></tr>';
+	$.each(json, (key, item) => {
+		if(item.update_user == null){
+			item.update_user = '';
+		}
+		if(item.update_time == null){
+			item.update_time = '';
+		}
+		reservationList += '<tr>';
+		reservationList += '<td width="10%">' + item.reserve_name + '</td>';
+		reservationList += '<td width="10%">' + item.start_time + '</td>';
+		reservationList += '<td width="10%">' + item.end_time + '</td>';
+		reservationList += '<td width="10%">' + item.create_user + '</td>';
+		reservationList += '<td width="10%">' + item.create_time + '</td>';
+		reservationList += '<td width="10%">' + item.update_user + '</td>';
+		reservationList += '<td width="10%">' + item.update_time + '</td>';
+		reservationList += '</tr>';
+	});
+	reservationList += '</table>';
+	$('#article').html(reservationList);
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////
+
+//search reservation data by reserve_id
+const handleSearchByReserveId = () => {
+	$('#searchByReserveIdModal').show();
+}
+
+const handlesearchByReserveIdPost = () => {
+	const reserveId = $('#reserveId').val();
+	
+	$.ajax({
+		url : '/room/reserve/' + reserveId,
+		type : 'GET',
+		dataType : 'JSON',
+		success : outSearchByReserveIdResult,
+		error : (e) => {
+			$('#searchByReserveIdModal').hide();
+			alert('エラー発生！入力したことを確認してください。');
+		}
+	});
+}
+
+const outSearchByReserveIdResult = (json) => {
+	
+	if(json.update_user == null){
+		json.update_user = '';
+	}
+	if(json.update_time == null){
+		json.update_time = '';
+	}
+	
+	console.log(JSON.stringify(json));
+	console.log(json.reserve_id);
+	
+	if(json.toString() === ''){
+		let reservationList = '<h3> 検索結果がありません。 </h3>';
+		$('#article').html(reservationList);
+		$('#searchByReserveIdModal').hide();
+		return;
+	}
+		
+	let resultOfSearchByReserveId = '<table class="table table-bordered table-striped table-hover">';
+	resultOfSearchByReserveId += '<tr><td width="10%">予約名</td>';
+	resultOfSearchByReserveId += '<td width="10%">開始時間</td>';
+	resultOfSearchByReserveId += '<td width="10%">終了時間</td>';
+	resultOfSearchByReserveId += '<td width="10%">申請者</td>';
+	resultOfSearchByReserveId += '<td width="10%">申請時間</td>';
+	resultOfSearchByReserveId += '<td width="10%">変更者</td>';
+	resultOfSearchByReserveId += '<td width="10%">変更時間</td></tr>';
+	resultOfSearchByReserveId += '<tr>';
+	resultOfSearchByReserveId += '<td width="10%">' + json.reserve_name + '</td>';
+	resultOfSearchByReserveId += '<td width="10%">' + json.start_time + '</td>';
+	resultOfSearchByReserveId += '<td width="10%">' + json.end_time + '</td>';
+	resultOfSearchByReserveId += '<td width="10%">' + json.create_user + '</td>';
+	resultOfSearchByReserveId += '<td width="10%">' + json.create_time + '</td>';
+	resultOfSearchByReserveId += '<td width="10%">' + json.update_user + '</td>';
+	resultOfSearchByReserveId += '<td width="10%">' + json.update_time + '</td>';
+	resultOfSearchByReserveId += '</tr>';
+	resultOfSearchByReserveId += '</table>';
+	$('#article').html(resultOfSearchByReserveId);
+	$('#searchByReserveIdModal').hide();
+}
+
+
+</script>
+<style>
+.ui-datepicker-trigger{
+	cursor: pointer;
+}
+
+.ui-widget-overlay{
+	background-color: white;
+}
+
+.hasDatepicker{
+	cursor: pointer;
+}
+
+.modal {
+    display: none; /* Hidden by default */
+    position: fixed; /* Stay in place */
+    z-index: 1; /* Sit on top */
+    left: 0;
+    top: 0;
+    width: 100%; /* Full width */
+    height: 100%; /* Full height */
+    overflow: auto; /* Enable scroll if needed */
+    background-color: rgb(0,0,0); /* Fallback color */
+    background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 15% auto; /* 15% from the top and centered */
+    padding: 20px;
+    border: 1px solid #888;
+    width: 30%; /* Could be more or less, depending on screen size */                          
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+}
+.close:hover,
+.close:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
+.input-time {
+	cursor: pointer;
+	width: 30%;
+}
+</style>
+</head>
+<body style="background-color: rgb(240, 240, 240);">
+	
+	<!-- header -->
+	<div name="header" style="background-color: black; color: white; min-height: 5vh;">
+		<h1 align="center" style="top: 5%;">Reservation Page</h1>
+	</div>
+	
+	<!-- functionButton -->
+	<div id="reservationRoom" align="right" style="margin-right: 5%;"></div>
+	<div name="functionButton" align="right" style="margin-right: 5%;">
+		<button style="margin-right: 1%" onclick="handleRoomAdd()">会議室の追加</button>
+		<button onclick="handleReservationAdd()">予約申請</button>
+		<button onclick="handleSearchByReserveId()">予約内容検索</button>
+	</div>
+	
+	<!-- article -->
+	<div id="article" align="center" style="margin-top: 5%; margin-left: 5%; min-height: 55vh">
+	</div>
+	
+	<!-- footer -->
+	<div name="footer" align="center" style="background-color: black; color: white; min-height: 10vh">
+		<p>管理担当者</p>		
+        <p>名前 : LeeSeongHak</p>
+        <p>e-mail : dltjdgkr22@naver.com</p>
+	</div>
+	
+	<!-- modal -->
+	<div id="reserveModal" class="modal">
+		<div  class="modal-content">
+			<span class="close" onclick={mainView()}>&times;</span>
+			<h3> 会議室の予約ページ </h3>
+			<p>申請事由 : <input id="reserveName" type="text" placeholder="事由入力" /></p>
+			<p>会議室名 : <input id="roomName" type="text" placeholder="会議室名入力" /></p>
+			<p>開始時間 : <input id="startDate" type="text" placeholder="開始時間選択" autocomplete="off"> <input id="startTime" class="input-time" type="text" autocomplete="off"></p>
+			<p>終了時間 : <input id="endDate" type="text" placeholder="終了時間選択" autocomplete="off"> <input id="endTime" class="input-time" type="text" autocomplete="off"></p>
+			<p>申請者名 : <input id="createUser" type="text" placeholder="申請者名" /></p>
+			<div align="center"><button onClick={handleReservePost()} style="margin-right: 3%;">申請</button></div>
+		</div>
+	</div>
+	
+	<div id="searchByReserveIdModal" class="modal" align="center">
+		<div  class="modal-content">
+			<span class="close" onclick={mainView()}>&times;</span>
+			<h3> 予約内容検索 </h3>
+			<p> 予約番号 <input id="reserveId" type="text" placeholder="番号入力" /></p>
+			<div align="center"><button onClick={handlesearchByReserveIdPost()} style="margin-right: 3%;">検索</button></div>
+		</div>
+	</div>
+</body>
+</html>
